@@ -3,10 +3,11 @@ module Data where
 import           Data.Aeson
 import           Data.List
 import qualified Data.Map.Strict as M
+import qualified Database.PostgreSQL.Simple.FromRow as PG
 import qualified GHC.Exts as E
 
 data Filter = Filter { filterID :: Int
-                     , filterData :: [Int]
+                     , filterData :: Value
                      }
 
 -- Index of bloom filter bit array (as string) => new value
@@ -23,3 +24,6 @@ instance ToJSON Filter where
     "filter_id" .= filterID,
     "filter_data" .= filterData
     ]
+
+instance PG.FromRow Filter where
+  fromRow = Filter <$> PG.field <*> PG.field

@@ -18,4 +18,4 @@ spec = do
 
   describe "filterDiffJson" $ do
     it "should encode as json correctly" $ do
-        encode (filterDiffJson [fd1, fd2]) `shouldBe` [J.json| {"filter_diff": {"1": 1, "2": 2,"3": 3 } } |]
+      encode (filterDiffJson [fd1, fd2]) `shouldBe` [J.json| {"filter_diff": {"1": 1, "2": 2,"3": 3 } } |]
