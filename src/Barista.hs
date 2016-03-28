@@ -15,7 +15,7 @@ fetch pool args sql = P.withResource pool retrieve
 
 getFilter :: P.Pool PG.Connection -> Int -> IO [Value]
 getFilter pool slice = do
-  results <- fetch pool (PG.Only slice) "SELECT filter_data FROM daily_filters WHERE max_rank = ?"
+  results <- fetch pool (PG.Only slice) "SELECT filter_data FROM daily_filters WHERE max_rank <= ?"
   return $ map PG.fromOnly results
 
 connectionPool :: IO (P.Pool PG.Connection)
