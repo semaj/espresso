@@ -1,6 +1,5 @@
 module Barista (runApp, app) where
 
-import qualified Constants as C
 import           Control.Monad.IO.Class
 import           Data
 import           Data.Aeson (Value(..), object, (.=), encode)
@@ -10,6 +9,7 @@ import qualified Data.Text.Lazy as TL
 import qualified Database.PostgreSQL.Simple as PG
 import qualified GHC.Exts as E
 import           Network.Wai (Application)
+import           System.Posix.Env
 import           Utils
 import qualified Web.Scotty as S
 
@@ -18,7 +18,17 @@ fetch pool args sql = P.withResource pool retrieve
   where retrieve conn = PG.query conn sql args
 
 connectionPool :: IO (P.Pool PG.Connection)
-connectionPool = P.createPool (PG.connect C.dbCreds) PG.close 1 40 10
+connectionPool = do
+  password <- getEnvDefault "ESPRESSO_DB_PASSWORD" ""
+  username <- getEnvDefault "ESPRESSO_DB_USERNAME" ""
+  database <- getEnvDefault "ESPRESSO_DB_DATABASE" ""
+  host <- getEnvDefault "ESPRESSO_DB_HOST" ""
+  let info = PG.defaultConnectInfo { PG.connectHost = host
+                                   , PG.connectUser = username
+                                   , PG.connectPassword = password
+                                   , PG.connectDatabase = database
+                                   }
+  P.createPool (PG.connect info) PG.close 1 40 10
 
 getFilter :: P.Pool PG.Connection -> Int -> IO (Maybe Filter)
 getFilter pool slice = do

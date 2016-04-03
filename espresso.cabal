@@ -16,7 +16,6 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Barista
-                     , Constants
                      , Data
                      , Utils
   build-depends:       base >= 4.7 && < 5
@@ -28,6 +27,7 @@ library
                      , text
                      , resource-pool
                      , containers
+                     , unix
   default-extensions:  OverloadedStrings
                      , QuasiQuotes
                      , DeriveGeneric
