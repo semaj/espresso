@@ -4,6 +4,7 @@ import           Control.Monad.IO.Class
 import           Data
 import           Data.Aeson (Value(..), object, (.=), encode)
 import qualified Data.Aeson as A
+import           Data.Char (toLower)
 import qualified Data.Pool as P
 import qualified Data.Text.Lazy as TL
 import qualified Database.PostgreSQL.Simple as PG
@@ -31,6 +32,12 @@ getCreds username password db host = do
                                  , PG.connectDatabase = d
                                  }
 
+filterSize :: String -> Int
+filterSize = toInt . (map toLower)
+  where toInt "small" = 1000
+        toInt "medium" = 100000
+        toInt _ = 100000000
+
 connectionPool :: IO (P.Pool PG.Connection)
 connectionPool = do
   password <- getEnv "ESPRESSO_DB_PASSWORD"
@@ -40,8 +47,8 @@ connectionPool = do
   case getCreds username password database host of
     Just creds -> P.createPool (PG.connect creds) PG.close 1 40 10
     Nothing -> error ("Could not get DB environment variables! " ++
-                      (show username) ++ " " ++ (show password) ++ " "
-                       ++ (show host) ++" " ++ (show database))
+                      (show username) ++ " " ++ (show password) ++
+                      " " ++ (show host) ++" " ++ (show database))
 
 getFilter :: P.Pool PG.Connection -> Int -> IO (Maybe Filter)
 getFilter pool slice = do
@@ -50,9 +57,9 @@ getFilter pool slice = do
 
 app' :: P.Pool PG.Connection -> S.ScottyM ()
 app' pool = do
-  S.get "/todays-filter/:max-rank" $ do
-    maxRank <- S.param "max-rank" :: S.ActionM Int
-    result <- liftIO $ getFilter pool maxRank
+  S.get "/todays-filter/:size" $ do
+    maxRank <- S.param "size" :: S.ActionM String
+    result <- liftIO $ getFilter pool (filterSize maxRank)
     case result of
       Just r -> S.json result
       Nothing -> S.json $ A.Object $ E.fromList [("error", "No filter available.")]
