@@ -17,18 +17,31 @@ fetch :: (PG.FromRow r, PG.ToRow q) => P.Pool PG.Connection -> q -> PG.Query -> 
 fetch pool args sql = P.withResource pool retrieve
   where retrieve conn = PG.query conn sql args
 
+ -- yeah, I use the Maybe monad. (⌐■_■)
+getCreds :: Maybe String -> Maybe String -> Maybe String ->
+            Maybe String -> Maybe PG.ConnectInfo
+getCreds username password db host = do
+  u <- username
+  p <- password
+  d <- db
+  h <- host
+  return $ PG.defaultConnectInfo { PG.connectHost = h
+                                 , PG.connectUser = u
+                                 , PG.connectPassword = p
+                                 , PG.connectDatabase = d
+                                 }
+
 connectionPool :: IO (P.Pool PG.Connection)
 connectionPool = do
-  password <- getEnvDefault "ESPRESSO_DB_PASSWORD" ""
-  username <- getEnvDefault "ESPRESSO_DB_USERNAME" ""
-  database <- getEnvDefault "ESPRESSO_DB_DATABASE" ""
-  host <- getEnvDefault "ESPRESSO_DB_HOST" ""
-  let info = PG.defaultConnectInfo { PG.connectHost = host
-                                   , PG.connectUser = username
-                                   , PG.connectPassword = password
-                                   , PG.connectDatabase = database
-                                   }
-  P.createPool (PG.connect info) PG.close 1 40 10
+  password <- getEnv "ESPRESSO_DB_PASSWORD"
+  username <- getEnv "ESPRESSO_DB_USERNAME"
+  database <- getEnv "ESPRESSO_DB_DATABASE"
+  host <- getEnv "ESPRESSO_DB_HOST"
+  case getCreds username password database host of
+    Just creds -> P.createPool (PG.connect creds) PG.close 1 40 10
+    Nothing -> error ("Could not get DB environment variables! " ++
+                      (show username) ++ " " ++ (show password) ++ " "
+                       ++ (show host) ++" " ++ (show database))
 
 getFilter :: P.Pool PG.Connection -> Int -> IO (Maybe Filter)
 getFilter pool slice = do
