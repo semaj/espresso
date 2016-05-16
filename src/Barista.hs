@@ -4,6 +4,7 @@ import           Control.Monad.IO.Class
 import           Data
 import           Data.Aeson (Value(..), object, (.=), encode)
 import qualified Data.Aeson as A
+import qualified Data.Aeson.Types as AT
 import           Data.Char (toLower)
 import qualified Data.Pool as P
 import qualified Data.Text.Lazy as TL
@@ -55,17 +56,27 @@ getFilter pool slice = do
   results <- fetch pool (PG.Only slice) "SELECT primary_id, filter_data FROM daily_filters WHERE max_rank = ? LIMIT 1"
   return $ safeHead results
 
+getIsRevoked :: P.Pool PG.Connection -> String -> IO Bool
+getIsRevoked pool serialHex = do
+  results <- fetch pool (serialHex, serialHex) "SELECT 1 FROM revoked_certs WHERE serial_hex = ? UNION SELECT 1 FROM revoked_from_crls WHERE serial_hex = ?" :: IO [PG.Only Int]
+  return $ (length results) >= 1
+
 app' :: P.Pool PG.Connection -> S.ScottyM ()
 app' pool = do
   S.get "/todays-filter/:size" $ do
     maxRank <- S.param "size" :: S.ActionM String
     result <- liftIO $ getFilter pool (filterSize maxRank)
     case result of
-      Just r -> S.json result
+      Just r -> S.json r
       Nothing -> S.json $ A.Object $ E.fromList [("error", "No filter available.")]
 
   S.get "/test" $ do
     S.text "success"
+
+  S.get "/is-revoked/:serialHex" $ do
+    serialHex <- S.param "serialHex" :: S.ActionM String
+    result <- liftIO $ getIsRevoked pool serialHex
+    S.json $ A.Object $ E.fromList [("is-revoked", AT.Bool result)]
 
 app :: IO Application
 app = do
@@ -75,4 +86,4 @@ app = do
 runApp :: IO ()
 runApp = do
   pool <- connectionPool
-  S.scotty 8080 (app' pool)
+  S.scotty 80 (app' pool)
