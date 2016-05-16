@@ -57,8 +57,8 @@ getFilter pool slice = do
   return $ safeHead results
 
 getIsRevoked :: P.Pool PG.Connection -> String -> IO Bool
-getIsRevoked pool serialHex = do
-  results <- fetch pool (serialHex, serialHex) "SELECT 1 FROM revoked_certs WHERE serial_hex = ? UNION SELECT 1 FROM revoked_from_crls WHERE serial_hex = ?" :: IO [PG.Only Int]
+getIsRevoked pool identifier = do
+  results <- fetch pool (identifier, identifier) "SELECT 1 FROM revoked_certs WHERE identifier = ? UNION SELECT 1 FROM revoked_from_crls WHERE identifier = ?" :: IO [PG.Only Int]
   return $ (length results) >= 1
 
 app' :: P.Pool PG.Connection -> S.ScottyM ()
@@ -73,9 +73,9 @@ app' pool = do
   S.get "/test" $ do
     S.text "success"
 
-  S.get "/is-revoked/:serialHex" $ do
-    serialHex <- S.param "serialHex" :: S.ActionM String
-    result <- liftIO $ getIsRevoked pool serialHex
+  S.get "/is-revoked/:identifier" $ do
+    identifier <- S.param "identifier" :: S.ActionM String
+    result <- liftIO $ getIsRevoked pool identifier
     S.json $ A.Object $ E.fromList [("is-revoked", AT.Bool result)]
 
 app :: IO Application
