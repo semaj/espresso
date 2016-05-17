@@ -53,7 +53,7 @@ connectionPool = do
 
 getFilter :: P.Pool PG.Connection -> Int -> IO (Maybe Filter)
 getFilter pool slice = do
-  results <- fetch pool (PG.Only slice) "SELECT primary_id, filter_data FROM daily_filters WHERE max_rank = ? LIMIT 1"
+  results <- fetch pool (PG.Only slice) "SELECT primary_id, filter_data FROM filters WHERE max_rank = ? LIMIT 1"
   return $ safeHead results
 
 getIsRevoked :: P.Pool PG.Connection -> String -> IO Bool
