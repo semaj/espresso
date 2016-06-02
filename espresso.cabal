@@ -27,6 +27,7 @@ library
                      , text
                      , resource-pool
                      , containers
+                     , bytestring
                      , unix
   default-extensions:  OverloadedStrings
                      , QuasiQuotes

@@ -37,7 +37,7 @@ filterSize :: String -> Int
 filterSize = toInt . (map toLower)
   where toInt "small" = 1000
         toInt "medium" = 100000
-        toInt _ = 100000000
+        toInt _ = 10000000
 
 connectionPool :: IO (P.Pool PG.Connection)
 connectionPool = do
@@ -53,7 +53,7 @@ connectionPool = do
 
 getFilter :: P.Pool PG.Connection -> Int -> IO (Maybe Filter)
 getFilter pool slice = do
-  results <- fetch pool (PG.Only slice) "SELECT primary_id, filter_data FROM filters WHERE max_rank = ? LIMIT 1"
+  results <- fetch pool (PG.Only slice) "SELECT primary_id, filter_bytes FROM filters WHERE max_rank = ? LIMIT 1"
   return $ safeHead results
 
 getIsRevoked :: P.Pool PG.Connection -> String -> IO Bool
