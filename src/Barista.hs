@@ -5,6 +5,8 @@ import           Data
 import           Data.Aeson (Value(..), object, (.=), encode)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Types as AT
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString as B
 import           Data.Char (toLower)
 import qualified Data.Pool as P
 import qualified Data.Text.Lazy as TL
@@ -51,10 +53,10 @@ connectionPool = do
                       (show username) ++ " " ++ (show password) ++
                       " " ++ (show host) ++" " ++ (show database))
 
-getFilter :: P.Pool PG.Connection -> Int -> IO (Maybe Filter)
+getFilter :: P.Pool PG.Connection -> Int -> IO (Maybe (PG.Only BL.ByteString))
 getFilter pool slice = do
-  results <- fetch pool (PG.Only slice) "SELECT primary_id, filter_bytes FROM filters WHERE max_rank = ? LIMIT 1"
-  return $ safeHead results
+  results <- fetch pool (PG.Only slice) "SELECT filter_bytes FROM filters WHERE max_rank = ? LIMIT 1" :: IO [PG.Only BL.ByteString]
+  return Nothing
 
 getIsRevoked :: P.Pool PG.Connection -> String -> IO Bool
 getIsRevoked pool identifier = do
@@ -67,7 +69,7 @@ app' pool = do
     maxRank <- S.param "size" :: S.ActionM String
     result <- liftIO $ getFilter pool (filterSize maxRank)
     case result of
-      Just r -> S.json r
+      Just r -> S.text "hi"
       Nothing -> S.json $ A.Object $ E.fromList [("error", "No filter available.")]
 
   S.get "/test" $ do
