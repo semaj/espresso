@@ -58,6 +58,11 @@ getFilter pool slice = do
   results <- fetch pool (PG.Only slice) "SELECT filter_bytes FROM filters WHERE max_rank = ? ORDER BY inserted DESC LIMIT 1" :: IO [PG.Only BL.ByteString]
   return $ safeHead results
 
+getDiff :: P.Pool PG.Connection -> Int -> IO (Maybe (PG.Only BL.ByteString))
+getDiff pool slice = do
+  results <- fetch pool (PG.Only slice) "SELECT diff_bytes FROM diffs WHERE max_rank = ? ORDER BY inserted DESC LIMIT 1" :: IO [PG.Only BL.ByteString]
+  return $ safeHead results
+
 getMeta :: P.Pool PG.Connection -> Int -> IO (Maybe (PG.Only Int))
 getMeta pool slice = do
   results <- fetch pool (PG.Only slice) "SELECT primary_id FROM filters WHERE max_rank = ? ORDER BY inserted DESC LIMIT 1"
@@ -82,6 +87,12 @@ app' pool = do
     case result of
       Just r -> S.raw $ PG.fromOnly r
       Nothing -> S.json $ A.Object $ E.fromList [("error", "No filter available.")]
+  S.get "/todays-diff/:size" $ do
+    maxRank <- S.param "size" :: S.ActionM String
+    result <- liftIO $ getDiff pool (filterSize maxRank)
+    case result of
+      Just r -> S.raw $ PG.fromOnly r
+      Nothing -> S.json $ A.Object $ E.fromList [("error", "No diff available.")]
 
   S.get "/" $ do
     S.text "hello!"
