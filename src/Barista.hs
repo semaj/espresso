@@ -83,8 +83,8 @@ app' pool = do
       Just r -> S.raw $ PG.fromOnly r
       Nothing -> S.json $ A.Object $ E.fromList [("error", "No filter available.")]
 
-  S.get "/test" $ do
-    S.text "success"
+  S.get "/" $ do
+    S.text "hello!"
 
   S.get "/is-revoked/:identifier" $ do
     identifier <- S.param "identifier" :: S.ActionM String
@@ -99,4 +99,4 @@ app = do
 runApp :: IO ()
 runApp = do
   pool <- connectionPool
-  S.scotty 80 (app' pool)
+  S.scotty 8080 (app' pool)
