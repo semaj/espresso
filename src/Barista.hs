@@ -1,13 +1,17 @@
 module Barista (runApp, app) where
 
+import qualified Codec.Compression.Zlib as Z
 import           Control.Monad.IO.Class
 import           Data
 import           Data.Aeson (Value(..), object, (.=), encode)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.Types as AT
+import qualified Data.Bits as BIT
+import           Data.Bits.ByteString.Lazy
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString as B
 import           Data.Char (toLower)
+import           Data.List as L
 import qualified Data.Pool as P
 import qualified Data.Text.Lazy as TL
 import qualified Database.PostgreSQL.Simple as PG
@@ -58,10 +62,14 @@ getFilter pool slice = do
   results <- fetch pool (PG.Only slice) "SELECT filter_bytes FROM filters WHERE max_rank = ? ORDER BY inserted DESC LIMIT 1" :: IO [PG.Only BL.ByteString]
   return $ safeHead results
 
-getDiff :: P.Pool PG.Connection -> Int -> IO (Maybe (PG.Only BL.ByteString))
-getDiff pool slice = do
-  results <- fetch pool (PG.Only slice) "SELECT diff_bytes FROM diffs WHERE max_rank = ? ORDER BY inserted DESC LIMIT 1" :: IO [PG.Only BL.ByteString]
-  return $ safeHead results
+foldDiffs :: [BL.ByteString] -> BL.ByteString
+foldDiffs = Z.compress . L.foldl' (\acc x -> (BIT.xor acc $ Z.decompress x)) (BL.repeat 0)
+
+getDiff :: P.Pool PG.Connection -> Int -> Int -> IO BL.ByteString
+getDiff pool slice currentID = do
+  results <- fetch pool (slice, currentID) "SELECT diff_bytes FROM diffs WHERE max_rank = ? AND old_filter >= ? ORDER BY inserted DESC LIMIT 1" :: IO [PG.Only BL.ByteString]
+  let folded = foldDiffs $ map PG.fromOnly results
+  return folded
 
 getMeta :: P.Pool PG.Connection -> Int -> IO (Maybe (PG.Only Int))
 getMeta pool slice = do
@@ -87,12 +95,11 @@ app' pool = do
     case result of
       Just r -> S.raw $ PG.fromOnly r
       Nothing -> S.json $ A.Object $ E.fromList [("error", "No filter available.")]
-  S.get "/todays-diff/:size" $ do
+  S.get "/diff/:size" $ do
     maxRank <- S.param "size" :: S.ActionM String
-    result <- liftIO $ getDiff pool (filterSize maxRank)
-    case result of
-      Just r -> S.raw $ PG.fromOnly r
-      Nothing -> S.json $ A.Object $ E.fromList [("error", "No diff available.")]
+    currentID <- S.param "current_id" :: S.ActionM Int
+    result <- liftIO $ getDiff pool (filterSize maxRank) currentID
+    S.raw result
 
   S.get "/" $ do
     S.text "hello!"

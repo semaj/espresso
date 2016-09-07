@@ -28,6 +28,8 @@ library
                      , resource-pool
                      , containers
                      , bytestring
+                     , bits-bytestring-lazy
+                     , zlib
                      , unix
   default-extensions:  OverloadedStrings
                      , QuasiQuotes
