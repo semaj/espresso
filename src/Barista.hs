@@ -59,7 +59,7 @@ connectionPool = do
 
 getFilter :: P.Pool PG.Connection -> Int -> IO (Maybe (PG.Only BL.ByteString))
 getFilter pool slice = do
-  results <- fetch pool (PG.Only slice) "SELECT filter_bytes FROM filters WHERE max_rank = ? ORDER BY inserted DESC LIMIT 1" :: IO [PG.Only BL.ByteString]
+  results <- fetch pool (PG.Only slice) "SELECT filter_bytes FROM filters WHERE max_rank = ? AND fp_rate = 0.001 ORDER BY inserted DESC LIMIT 1" :: IO [PG.Only BL.ByteString]
   return $ safeHead results
 
 foldDiffs :: [BL.ByteString] -> BL.ByteString
